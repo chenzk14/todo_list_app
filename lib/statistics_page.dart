@@ -209,13 +209,13 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          childrenPadding: EdgeInsets.only(bottom: 8),
+          childrenPadding: EdgeInsets.only(bottom: 0),
           leading: Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: AppColors.techBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(0),
             ),
             child: Icon(
               Icons.calendar_today,
@@ -404,11 +404,11 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                   
                   // 合并的统计方式和图表Card
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: 0),
                     child: Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(0),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,11 +518,11 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                           ),
                           
                           // 分隔线
-                          Divider(
-                            height: 1,
-                            thickness: 0.5,
-                            color: AppColors.background,
-                          ),
+                          // Divider(
+                          //   height: 1,
+                          //   thickness: 0.5,
+                          //   color: AppColors.background,
+                          // ),
                           
                           // 图表区域
                           Column(
@@ -586,7 +586,7 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                               ),
                               if (_isChartExpanded)
                                 Container(
-                                  height: 320,
+                                  height: 300,
                                   padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
                                   child: SfCartesianChart(
                                     plotAreaBorderWidth: 0,
@@ -638,7 +638,7 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                                         ),
                                         animationDuration: 600,
                                         color: AppColors.techBlue,
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(0),
                                       ),
                                     ],
                                   ),
@@ -651,55 +651,65 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
                   ),
 
                   SizedBox(height: 24),
-                  
+
                   // 详细信息标题
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: AppColors.techBlue,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          '详细信息',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 20,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,  // 统一的白色背景色
+                    borderRadius: BorderRadius.circular(0),  // 整体圆角
                   ),
-                  
-                  SizedBox(height: 16),
-                  
-                  // 详细信息区域 - 使用固定高度避免滚动冲突
-                  Container(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    child: _existingYears.isNotEmpty
-                        ? _buildYearlyMonthlyEventDays()
-                        : Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32),
-                              child: Text(
-                                '暂无年份数据',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 16,
-                                ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 详细信息标题
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: AppColors.techBlue,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              '详细信息',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 详细信息内容区域
+                      Container(
+                        height: MediaQuery.of(context).size.height * 0.5,
+                        child: _existingYears.isNotEmpty
+                            ? _buildYearlyMonthlyEventDays()
+                            : Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Text(
+                              '暂无年份数据',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 16,
                               ),
                             ),
                           ),
+                        ),
+                      ),
+                    ],
                   ),
-                  
-                  SizedBox(height: 20),
+                ),
+
+                SizedBox(height: 20),
                 ],
               ),
             ),
