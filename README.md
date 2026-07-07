@@ -2,7 +2,7 @@
 
 一款简洁美观的 Flutter 打卡应用，支持日历视图、数据统计和数据管理。
 
-**设计预览**：[查看设计稿](https://wps.chuangkit.com/sharedesign?d=ea4984e1-c9f0-4d76-b3ce-b7b39416e3ca&from=kdocs_fx)
+**设计预览**：[查看设计稿](https://www.kdocs.cn/l/crDSV8PhJBoh)
 
 ## 功能特性
 
