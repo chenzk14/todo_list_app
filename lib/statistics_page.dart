@@ -347,6 +347,7 @@ class StatisticsPageState extends State<StatisticsPage> with TickerProviderState
                   yValueMapper: (_ChartData data, _) => data.count,
                   color: Color(0xFF4A7CF7),
                   width: 2,
+                  animationDuration: 300,
                   splineType: SplineType.natural,
                   markerSettings: MarkerSettings(
                     isVisible: true,

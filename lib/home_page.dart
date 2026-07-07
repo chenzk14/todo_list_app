@@ -128,7 +128,23 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
+                              setDialogState(() {
+                                final now = DateTime.now();
+                                selectedYear = now.year;
+                                selectedMonth = now.month;
+                              });
+                            },
+                            child: Text(
+                              '回到当前',
+                              style: TextStyle(color: Color(0xFF4A7CF7)),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
@@ -227,7 +243,7 @@ class _HomePageState extends State<HomePage> {
   void _punchCard() {
     final punchDate = _selectedDay ?? DateTime.now();
     final newEvent = Event(
-      name: '新排期',
+      name: '新事件',
       date: DateTime(punchDate.year, punchDate.month, punchDate.day,
           DateTime.now().hour, DateTime.now().minute, DateTime.now().second),
       status: EventStatus.scheduled,
