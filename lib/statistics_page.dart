@@ -1,50 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
-import 'package:intl/intl.dart';
 import 'event_model.dart';
 import 'local_storage.dart';
 
-// Apple 科技蓝配色
-class AppColors {
-  static const Color techBlue = Color(0xFF007AFF);
-  static const Color techBlueLight = Color(0xFF5AC8FA);
-  static const Color techBlueDark = Color(0xFF0051D5);
-  static const Color background = Color(0xFFF2F2F7);
-  static const Color cardBackground = Colors.white;
-  static const Color textPrimary = Color(0xFF000000);
-  static const Color textSecondary = Color(0xFF8E8E93);
-}
-
 class StatisticsPage extends StatefulWidget {
+  const StatisticsPage({super.key});
+
   @override
-  _StatisticsPageState createState() => _StatisticsPageState();
+  StatisticsPageState createState() => StatisticsPageState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProviderStateMixin {
+class StatisticsPageState extends State<StatisticsPage> with TickerProviderStateMixin {
   List<Event> _events = [];
-  bool _isYearly = true;
-  bool _isChartExpanded = true;
-  final Map<int, bool> _yearExpanded = {};
-  int? _selectedYear;
   late TabController _tabController;
   List<int> _existingYears = [];
 
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+    loadEvents();
+    _tabController = TabController(length: 0, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
     if (_existingYears.isNotEmpty) {
-    _tabController.dispose();
+      _tabController.dispose();
     }
     super.dispose();
   }
 
-  // 加载事件
-  Future<void> _loadEvents() async {
+  Future<void> loadEvents() async {
     final events = await LocalStorage.loadEvents();
     setState(() {
       _events = events;
@@ -55,38 +43,13 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
           vsync: this,
           initialIndex: _existingYears.length - 1,
         );
+        _tabController.addListener(() {
+          setState(() {});
+        });
       }
     });
   }
 
-  // 获取统计数据
-  List<ChartData> _getStatisticsData() {
-    if (_isYearly) {
-      final Map<int, int> yearlyCount = {};
-      for (final event in _events) {
-        final year = event.date.year;
-        yearlyCount[year] = (yearlyCount[year] ?? 0) + 1;
-      }
-      return yearlyCount.entries
-          .map((entry) => ChartData('${entry.key}年', entry.value))
-          .toList();
-    } else {
-      final Map<int, int> monthlyCount = {};
-      final selectedYear = _selectedYear ?? DateTime.now().year;
-      for (final event in _events) {
-        if (event.date.year == selectedYear) {
-          final month = event.date.month;
-          monthlyCount[month] = (monthlyCount[month] ?? 0) + 1;
-        }
-      }
-      return List.generate(12, (index) {
-        final month = index + 1;
-        return ChartData('$month月', monthlyCount[month] ?? 0);
-      });
-    }
-  }
-
-  // 获取存在数据的年份列表
   List<int> _getExistingYears() {
     final Set<int> years = {};
     for (final event in _events) {
@@ -95,95 +58,178 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
     return years.toList()..sort();
   }
 
-  // 获取每年每月有事件发生的日期列表
-  Widget _buildYearlyMonthlyEventDays() {
-    final Map<int, Map<int, Set<int>>> yearlyMonthlyEventDays = {};
-    final Map<int, int> yearlyTotalCount = {};
+  int _getYearTotal(int year) {
+    return _events.where((e) => e.date.year == year).length;
+  }
 
+  Map<int, Map<int, Map<int, int>>> _getYearlyMonthlyEventDays() {
+    final Map<int, Map<int, Map<int, int>>> result = {};
     for (final event in _events) {
       final year = event.date.year;
       final month = event.date.month;
       final day = event.date.day;
-
-      if (!yearlyMonthlyEventDays.containsKey(year)) {
-        yearlyMonthlyEventDays[year] = {};
-        yearlyTotalCount[year] = 0;
+      if (!result.containsKey(year)) {
+        result[year] = {};
       }
-
-      if (!yearlyMonthlyEventDays[year]!.containsKey(month)) {
-        yearlyMonthlyEventDays[year]![month] = {};
+      if (!result[year]!.containsKey(month)) {
+        result[year]![month] = {};
       }
-
-      yearlyMonthlyEventDays[year]![month]!.add(day);
-      yearlyTotalCount[year] = (yearlyTotalCount[year] ?? 0) + 1;
+      result[year]![month]![day] = (result[year]![month]![day] ?? 0) + 1;
     }
+    return result;
+  }
 
-    final sortedYears = yearlyMonthlyEventDays.keys.toList()..sort();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFFF5F6FA),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _events.isEmpty
+                  ? _buildEmptyState()
+                  : _existingYears.isEmpty
+                      ? _buildEmptyState()
+                      : _buildContent(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    if (sortedYears.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            '暂无年份数据',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 16,
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '打卡统计',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '查看打卡统计数据',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9A9AB0),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Color(0xFF4A7CF7).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.bar_chart_rounded,
+              size: 40,
+              color: Color(0xFF4A7CF7),
             ),
           ),
-        ),
-      );
-    }
+          SizedBox(height: 24),
+          Text(
+            '暂无打卡记录',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '开始打卡后即可查看统计信息',
+            style: TextStyle(
+              fontSize: 15,
+              color: Color(0xFF9A9AB0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildContent() {
     return Column(
       children: [
-        // 年份Tab切换 - Apple风格
         Container(
-          margin: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: AppColors.techBlue,
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            labelColor: Colors.white,
-            unselectedLabelColor: AppColors.textSecondary,
-            labelStyle: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
-            tabs: sortedYears.map((year) {
-              return Tab(
-                text: '$year年',
+          height: 34,
+          margin: EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _existingYears.length,
+            separatorBuilder: (context, index) => SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final year = _existingYears[index];
+              final isSelected = _tabController.index == index;
+              return GestureDetector(
+                onTap: () {
+                  _tabController.animateTo(index);
+                },
+                child: Container(
+                  width: 72,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Color(0xFF4A7CF7) : Colors.white,
+                    borderRadius: BorderRadius.circular(90),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '$year年',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
               );
-            }).toList(),
+            },
           ),
         ),
-
-        // 详细信息内容 - 使用Expanded和SingleChildScrollView修复滚动
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: sortedYears.map((year) {
-              if (!_yearExpanded.containsKey(year)) {
-                _yearExpanded[year] = false;
-              }
-
+            children: _existingYears.map((year) {
               return SingleChildScrollView(
-                physics: BouncingScrollPhysics(), // Apple风格的弹性滚动
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildYearCard(year, yearlyMonthlyEventDays, yearlyTotalCount),
+                physics: BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 100),
+                child: Column(
+                  children: [
+                    _buildYearSummaryCard(year),
+                    SizedBox(height: 12),
+                    _buildMonthlyDetailCard(year),
+                  ],
                 ),
               );
             }).toList(),
@@ -193,564 +239,201 @@ class _StatisticsPageState extends State<StatisticsPage> with SingleTickerProvid
     );
   }
 
-  // 构建年份卡片
-  Widget _buildYearCard(
-    int year,
-    Map<int, Map<int, Set<int>>> yearlyMonthlyEventDays,
-    Map<int, int> yearlyTotalCount,
-  ) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 20),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+  Widget _buildYearSummaryCard(int year) {
+    final total = _getYearTotal(year);
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-          tilePadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          childrenPadding: EdgeInsets.only(bottom: 0),
-          leading: Container(
-            width: 44,
-            height: 44,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.calendar_month_outlined, size: 16, color: Color(0xFF4A7CF7)),
+                  SizedBox(width: 4),
+                  Text(
+                    '${year}年总计',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF9A9AB0),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                '$total 次',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.techBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(0),
+              color: Color(0xFF4A7CF7).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              Icons.calendar_today,
-              color: AppColors.techBlue,
+              Icons.insights_outlined,
               size: 22,
+              color: Color(0xFF4A7CF7),
             ),
           ),
-                      title: Text(
-                        '$year年统计',
-                        style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 17,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: Text(
-              '总计 ${yearlyTotalCount[year]} 次打卡',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          trailing: Icon(
-            _yearExpanded[year]!
-                ? Icons.keyboard_arrow_up
-                : Icons.keyboard_arrow_down,
-            color: AppColors.textSecondary,
-          ),
-                      initiallyExpanded: _yearExpanded[year]!,
-                      onExpansionChanged: (expanded) {
-                        setState(() {
-                          _yearExpanded[year] = expanded;
-                        });
-                      },
-                      children: [
-                        for (int month = 1; month <= 12; month++)
-              _buildMonthTile(
-                month,
-                yearlyMonthlyEventDays[year]?[month]?.toList() ?? [],
-                month < 12,
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  // 构建月份Tile
-  Widget _buildMonthTile(int month, List<int> days, bool showDivider) {
-    days.sort();
-    final count = days.length;
-    
+  Widget _buildMonthlyDetailCard(int year) {
+    final yearlyMonthlyEventDays = _getYearlyMonthlyEventDays();
+    final monthlyDays = yearlyMonthlyEventDays[year] ?? {};
+
     return Container(
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: showDivider
-            ? Border(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '月度详情',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          SizedBox(height: 12),
+          ...List.generate(12, (index) {
+            final month = index + 1;
+            final dayCounts = monthlyDays[month] ?? {};
+            return _buildMonthRow(month, dayCounts);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthRow(int month, Map<int, int> dayCounts) {
+    final sortedDays = dayCounts.keys.toList()..sort();
+    final totalEvents = dayCounts.values.fold(0, (sum, count) => sum + count);
+    final daysText = sortedDays.map((day) {
+      final count = dayCounts[day]!;
+      return count > 1 ? '$day（${count}次）' : '$day';
+    }).join('，');
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: 12,
+        bottom: month == 12 ? 12 : 12,
+        left: 0,
+        right: 0,
+      ),
+      decoration: month == 12
+          ? null
+          : BoxDecoration(
+              border: Border(
                 bottom: BorderSide(
-                  color: AppColors.background,
-                  width: 0.5,
+                  color: Color(0xFFF5F6FA),
+                  width: 1,
                 ),
-              )
-            : null,
-      ),
-                            child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              leading: Container(
-          width: 36,
-          height: 36,
-                                decoration: BoxDecoration(
-            color: AppColors.techBlue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '$month',
-                                    style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: AppColors.techBlue,
-                                    ),
-                                  ),
-                                ),
-                              ),
-        title: Text(
-          '$month 月',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        subtitle: Padding(
-          padding: EdgeInsets.only(top: 4),
-          child: Text(
-            days.isEmpty
-                                  ? '本月无打卡记录'
-                : '打卡日期: ${days.join('日, ')}日',
-                                style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-        trailing: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.techBlue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$count次',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: AppColors.techBlue,
+              ),
+            ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: totalEvents > 0
+                  ? Color(0xFF4A7CF7).withValues(alpha: 0.1)
+                  : Color(0xFFF5F6FA),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                '$month',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: totalEvents > 0 ? Color(0xFF4A7CF7) : Color(0xFF9A9AB0),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          '统计',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: AppColors.techBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _events.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.techBlue.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.bar_chart_rounded,
-                      size: 40,
-                      color: AppColors.techBlue,
-                    ),
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    '暂无打卡记录',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '开始打卡后即可查看统计信息',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : SingleChildScrollView(
-              physics: BouncingScrollPhysics(), // Apple风格的弹性滚动
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                  SizedBox(height: 20),
-                  
-                  // 合并的统计方式和图表Card
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 0),
-                    child: Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 统计方式选择区域
-                          Padding(
-                            padding: EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 4,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.techBlue,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      '统计方式',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 18,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 20),
-                                // Apple风格的Segmented Control
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.background,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildSegmentedButton(
-                                          '年统计',
-                                          true,
-                                          _isYearly,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: _buildSegmentedButton(
-                                          '月统计',
-                                          false,
-                                          !_isYearly,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (!_isYearly && _existingYears.isNotEmpty) ...[
-                                  SizedBox(height: 16),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 16),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppColors.techBlue.withOpacity(0.2),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<int>(
-                                        value: _selectedYear,
-                                        isExpanded: true,
-                                        icon: Icon(
-                                          Icons.keyboard_arrow_down,
-                                          color: AppColors.techBlue,
-                                        ),
-                                        hint: Text(
-                                          '选择年份',
-                                          style: TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        style: TextStyle(
-                                          color: AppColors.textPrimary,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        items: _existingYears.map((year) {
-                                          return DropdownMenuItem<int>(
-                                            value: year,
-                                            child: Text('$year年'),
-                                          );
-                                        }).toList(),
-                                        onChanged: (year) {
-                                          setState(() {
-                                            _selectedYear = year;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          
-                          // 分隔线
-                          // Divider(
-                          //   height: 1,
-                          //   thickness: 0.5,
-                          //   color: AppColors.background,
-                          // ),
-                          
-                          // 图表区域
-                          Column(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _isChartExpanded = !_isChartExpanded;
-                                  });
-                                },
-                                child: Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.techBlue.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Icon(
-                                          Icons.auto_graph_rounded,
-                                          color: AppColors.techBlue,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '打卡统计图表',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 17,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              _isYearly ? '年度统计' : '月度统计',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(
-                                        _isChartExpanded
-                                            ? Icons.keyboard_arrow_up
-                                            : Icons.keyboard_arrow_down,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (_isChartExpanded)
-                                Container(
-                                  height: 300,
-                                  padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
-                                  child: SfCartesianChart(
-                                    plotAreaBorderWidth: 0,
-                                    primaryXAxis: CategoryAxis(
-                                      title: AxisTitle(
-                                        text: _isYearly ? '年份' : '月份',
-                                        textStyle: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                      labelStyle: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                      majorGridLines: MajorGridLines(width: 0),
-                                    ),
-                                    primaryYAxis: NumericAxis(
-                                      title: AxisTitle(
-                                        text: '次数',
-                                        textStyle: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                      numberFormat: NumberFormat.decimalPattern(),
-                                      interval: 1,
-                                      labelStyle: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                      majorGridLines: MajorGridLines(
-                                        width: 0.5,
-                                        color: AppColors.background,
-                                      ),
-                                    ),
-                                    series: <CartesianSeries<ChartData, String>>[
-                                      ColumnSeries<ChartData, String>(
-                                        dataSource: _getStatisticsData(),
-                                        xValueMapper: (ChartData data, _) => data.x,
-                                        yValueMapper: (ChartData data, _) => data.y,
-                                        dataLabelSettings: DataLabelSettings(
-                                          isVisible: true,
-                                          textStyle: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.techBlue,
-                                          ),
-                                        ),
-                                        animationDuration: 600,
-                                        color: AppColors.techBlue,
-                                        borderRadius: BorderRadius.circular(0),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
+                Text(
+                  '$month 月',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                if (sortedDays.isNotEmpty) ...[
+                  SizedBox(height: 4),
+                  Text(
+                    '打卡日期：$daysText',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF9A9AB0),
                     ),
                   ),
-
-                  SizedBox(height: 24),
-
-                  // 详细信息标题
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,  // 统一的白色背景色
-                    borderRadius: BorderRadius.circular(0),  // 整体圆角
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 详细信息标题
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: AppColors.techBlue,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '详细信息',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 20,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // 详细信息内容区域
-                      Container(
-                        height: MediaQuery.of(context).size.height * 0.5,
-                        child: _existingYears.isNotEmpty
-                            ? _buildYearlyMonthlyEventDays()
-                            : Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Text(
-                              '暂无年份数据',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 20),
                 ],
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: totalEvents > 0
+                  ? Color(0xFF4A7CF7).withValues(alpha: 0.1)
+                  : Color(0xFFF5F6FA),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$totalEvents次',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: totalEvents > 0 ? Color(0xFF4A7CF7) : Color(0xFF9A9AB0),
               ),
             ),
-    );
-  }
-
-  // 构建Segmented Button（Apple风格）
-  Widget _buildSegmentedButton(String label, bool value, bool isSelected) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _isYearly = value;
-          if (!_isYearly && _selectedYear == null && _existingYears.isNotEmpty) {
-            _selectedYear = _existingYears.last;
-          }
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.techBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-                          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
-                          ),
-                        ),
-                ),
-            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class ChartData {
-  final String x;
-  final int y;
 
-  ChartData(this.x, this.y);
-}

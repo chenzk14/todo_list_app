@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'statistics_page.dart';
@@ -11,25 +12,25 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '一键打卡 APP',
+      title: '日历 APP',
       theme: ThemeData(
-        primaryColor: Color(0xFF007AFF), // Apple 科技蓝
+        primaryColor: Color(0xFF4A7CF7),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Color(0xFF007AFF),
-          primary: Color(0xFF007AFF),
-          secondary: Color(0xFF5AC8FA),
+          seedColor: Color(0xFF4A7CF7),
+          primary: Color(0xFF4A7CF7),
+          secondary: Color(0xFFFF9F43),
         ),
-        scaffoldBackgroundColor: Color(0xFFF2F2F7), // Apple 浅灰背景
+        scaffoldBackgroundColor: Color(0xFFF5F6FA),
         cardTheme: CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           color: Colors.white,
         ),
         appBarTheme: AppBarTheme(
           elevation: 0,
-          backgroundColor: Color(0xFF007AFF),
+          backgroundColor: Color(0xFF4A7CF7),
           foregroundColor: Colors.white,
           centerTitle: false,
         ),
@@ -46,37 +47,104 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
-  final List<Widget> _pages = [
-    HomePage(),
-    StatisticsPage(),
-    DataManagementPage(),
-  ];
+  final GlobalKey<StatisticsPageState> _statisticsKey = GlobalKey();
+  final GlobalKey<DataManagementPageState> _dataKey = GlobalKey();
+
+  void _onTabChanged(int index) {
+    if (index == _currentIndex) return;
+    setState(() {
+      _currentIndex = index;
+    });
+    if (index == 1) {
+      _statisticsKey.currentState?.loadEvents();
+    } else if (index == 2) {
+      _dataKey.currentState?.loadFileInfo();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '首页',
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              HomePage(),
+              StatisticsPage(key: _statisticsKey),
+              DataManagementPage(key: _dataKey),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: '统计',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.backup),
-            label: '数据管理',
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    height: 60,
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildNavItem(0, Icons.home_outlined, Icons.home, '首页'),
+                            _buildNavItem(1, Icons.bar_chart_outlined, Icons.bar_chart, '统计'),
+                            _buildNavItem(2, Icons.backup_outlined, Icons.backup, '数据'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData outlineIcon, IconData filledIcon, String label) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => _onTabChanged(index),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        margin: EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: isSelected ? 12 : 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Color(0xFF4A7CF7) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? filledIcon : outlineIcon,
+              size: 22,
+              color: isSelected ? Colors.white : Color(0xFF9A9AB0),
+            ),
+            if (isSelected) ...[
+              SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
