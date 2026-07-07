@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 import 'event_model.dart';
 import 'local_storage.dart';
 
@@ -60,6 +61,16 @@ class StatisticsPageState extends State<StatisticsPage> with TickerProviderState
 
   int _getYearTotal(int year) {
     return _events.where((e) => e.date.year == year).length;
+  }
+
+  List<int> _getMonthlyData(int year) {
+    final monthlyCounts = List.filled(12, 0);
+    for (final event in _events) {
+      if (event.date.year == year) {
+        monthlyCounts[event.date.month - 1]++;
+      }
+    }
+    return monthlyCounts;
   }
 
   Map<int, Map<int, Map<int, int>>> _getYearlyMonthlyEventDays() {
@@ -241,6 +252,11 @@ class StatisticsPageState extends State<StatisticsPage> with TickerProviderState
 
   Widget _buildYearSummaryCard(int year) {
     final total = _getYearTotal(year);
+    final monthlyData = _getMonthlyData(year);
+    final chartData = List.generate(12, (index) {
+      return _ChartData('${index + 1}月', monthlyData[index].toDouble());
+    });
+
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -254,46 +270,97 @@ class StatisticsPageState extends State<StatisticsPage> with TickerProviderState
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.calendar_month_outlined, size: 16, color: Color(0xFF4A7CF7)),
-                  SizedBox(width: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_month_outlined, size: 16, color: Color(0xFF4A7CF7)),
+                      SizedBox(width: 4),
+                      Text(
+                        '${year}年总计',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF9A9AB0),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
                   Text(
-                    '${year}年总计',
+                    '$total 次',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9A9AB0),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A2E),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 8),
-              Text(
-                '$total 次',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF4A7CF7).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.insights_outlined,
+                  size: 22,
+                  color: Color(0xFF4A7CF7),
                 ),
               ),
             ],
           ),
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Color(0xFF4A7CF7).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.insights_outlined,
-              size: 22,
-              color: Color(0xFF4A7CF7),
+          SizedBox(height: 12),
+          SizedBox(
+            height: 120,
+            child: SfCartesianChart(
+              margin: EdgeInsets.all(0),
+              primaryXAxis: CategoryAxis(
+                majorGridLines: MajorGridLines(width: 0),
+                axisLine: AxisLine(width: 0),
+                labelStyle: TextStyle(fontSize: 10, color: Color(0xFF9A9AB0)),
+              ),
+              primaryYAxis: NumericAxis(
+                majorGridLines: MajorGridLines(
+                  color: Color(0xFFF5F6FA),
+                  width: 1,
+                ),
+                axisLine: AxisLine(width: 0),
+                labelStyle: TextStyle(fontSize: 10, color: Color(0xFF9A9AB0)),
+              ),
+              tooltipBehavior: TooltipBehavior(
+                enable: true,
+                format: 'point.x : point.y 次',
+                header: '',
+              ),
+              series: <CartesianSeries<_ChartData, String>>[
+                SplineSeries<_ChartData, String>(
+                  dataSource: chartData,
+                  xValueMapper: (_ChartData data, _) => data.month,
+                  yValueMapper: (_ChartData data, _) => data.count,
+                  color: Color(0xFF4A7CF7),
+                  width: 2,
+                  splineType: SplineType.natural,
+                  markerSettings: MarkerSettings(
+                    isVisible: true,
+                    height: 6,
+                    width: 6,
+                    borderColor: Color(0xFF4A7CF7),
+                    borderWidth: 2,
+                    color: Colors.white,
+                  ),
+                  dataLabelSettings: DataLabelSettings(
+                    isVisible: false,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -436,4 +503,9 @@ class StatisticsPageState extends State<StatisticsPage> with TickerProviderState
   }
 }
 
+class _ChartData {
+  final String month;
+  final double count;
 
+  _ChartData(this.month, this.count);
+}
