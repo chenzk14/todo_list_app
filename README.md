@@ -1,34 +1,49 @@
-# Todo List App (一键打卡)
+# 一键打卡 App
 
-一个简洁美观的 Flutter 打卡应用，采用 Apple 风格的 UI 设计。
+一款简洁美观的 Flutter 打卡应用，支持日历视图、数据统计和数据管理。
 
 ## 功能特性
 
-- ✅ **一键打卡** - 快速记录打卡事件
-- 📊 **数据统计** - 年度/月度统计图表，详细数据查看
-- 💾 **数据管理** - 数据备份、导出、导入功能
-- 🎨 **Apple 风格 UI** - 科技蓝配色，简洁优雅的设计
+### 首页
+- **一键打卡** - 点击按钮快速记录打卡事件，支持同一日期多次打卡
+- **日历视图** - 中文星期显示，点击时间区域可快速切换年月
+- **事件统计** - 显示当月打卡次数及与上月对比
+- **实时时间** - 显示当前日期和时间
+
+### 统计页面
+- **年度统计** - 平滑折线图展示每月打卡趋势
+- **月度详情** - 显示各日期打卡次数（如"5（4次）"）
+- **年份切换** - 水平滑动选择不同年份
+
+### 数据管理
+- **数据备份** - 将数据备份到本地文件
+- **数据导出** - 导出 JSON 格式文件用于分享
+- **数据导入** - 从 JSON 文件导入数据
+- **权限管理** - 管理存储权限
 
 ## 技术栈
 
 - Flutter 3.0+
 - Dart 3.0+
-- Syncfusion Flutter Charts - 图表展示
+- Syncfusion Flutter Charts - 折线图展示
 - Table Calendar - 日历组件
+- Shared Preferences - 本地数据存储
 - Path Provider - 文件路径管理
-- File Picker - 文件选择
+- File Picker - 文件选择器
+- Permission Handler - 权限管理
 
 ## 项目结构
 
 ```
 lib/
-├── main.dart                 # 应用入口
+├── main.dart                 # 应用入口与底部导航
 ├── home_page.dart            # 首页（打卡页面）
 ├── statistics_page.dart      # 统计页面
 ├── data_management_page.dart # 数据管理页面
 ├── event_model.dart          # 事件数据模型
 ├── local_storage.dart        # 本地存储管理
-└── file_storage.dart         # 文件存储管理
+├── file_storage.dart         # 文件存储管理
+└── toast_util.dart           # Toast 提示工具
 ```
 
 ## 安装运行
@@ -50,23 +65,19 @@ flutter pub get
 flutter run
 ```
 
-## 主要功能说明
+## 打包发布
 
-### 打卡功能
-- 点击浮动按钮快速打卡
-- 支持选择日期打卡
-- 日历视图显示打卡记录
+```bash
+flutter build apk --release
+```
 
-### 统计功能
-- 年度/月度统计切换
-- 可视化图表展示
-- 详细的年月日统计信息
+## 版本说明
 
-### 数据管理
-- 数据备份到本地文件
-- 导出数据为 JSON 格式
-- 从文件导入数据
-- 文件保存到外部存储根目录
+版本号格式：`x.y.z+n`
+- `x.y.z` - 版本号（显示给用户）
+- `n` - 构建号（内部版本）
+
+每次发布新版需手动修改 `pubspec.yaml` 中的 `version` 字段。
 
 ## 许可证
 
